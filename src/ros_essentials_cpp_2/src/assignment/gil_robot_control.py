@@ -17,29 +17,34 @@ velocity_publisher = None
 direction = 1
 inc = 1
 
-#5.54
-target_x, target_y = 9, 2
- 
-
 def poseCallback(pose_message):
-    global x, target_x, target_y
+    global x
     global y, z, yaw
     global msg_num, velocity_publisher, direction, inc
-    
+    #5.54
+    target_x, target_y = 3,10
+
+
     x= pose_message.x
     y= pose_message.y
     yaw = pose_message.theta
-    #msg_num = msg_num + 1
+
+    new_linear_velocity, new_angular_velocity = calculate_velocities(target_x, target_y, x, y, yaw)
     
+    velocity_message = Twist()
+    velocity_message.linear.x = new_linear_velocity
+    velocity_message.angular.z = new_angular_velocity
+    velocity_publisher.publish(velocity_message)
+
+def calculate_velocities(target_x, target_y, robot_x, robot_y, robot_yaw):
     new_linear_velocity = 0
     new_angular_velocity = 0
 
-    dx =  target_x - x
-    dy =  target_y - y
+    dx =  target_x - robot_x
+    dy =  target_y - robot_y
     distance = np.sqrt(dy*dy+dx*dx)
     
     angle_to_target_deg = 180*np.arctan(np.abs(dy/dx))/np.pi
-    print('Pre {}'.format(angle_to_target_deg))
     if dx > 0 and dy > 0:
         angle_to_target_deg = angle_to_target_deg
     if dx < 0 and dy > 0:
@@ -48,73 +53,20 @@ def poseCallback(pose_message):
         angle_to_target_deg = 180 + angle_to_target_deg
     if dx > 0 and dy < 0:
         angle_to_target_deg = 360 - angle_to_target_deg
-    
-    print('Post {}'.format(angle_to_target_deg))
-    yaw_angle = (yaw/np.pi)*180
-    if yaw_angle < 0:
-        yaw_angle = 360+yaw_angle
+    robot_yaw_angle = (robot_yaw/np.pi)*180
+    if robot_yaw_angle < 0:
+        robot_yaw_angle = 360+robot_yaw_angle
 
     desired =  angle_to_target_deg
-    diff = desired - yaw_angle
+    diff = desired - robot_yaw_angle
     
     new_linear_velocity = distance*0.2 + 0.5
     new_angular_velocity = diff*0.02
 
     if distance < 0.1:
         new_linear_velocity = 0
-        target_x, target_y = 5.45,5.45
 
-    #print('{},{},{}'.format(x,y,yaw))
-    
-    velocity_message = Twist()
-    velocity_message.linear.x = new_linear_velocity
-    velocity_message.angular.z = new_angular_velocity
-        
-    #print ('x = {}'.format(pose_message.x)) #new in python 3
-    #print ('y = %f' %pose_message.y) #used in python 2
-    #print ('yaw = {}'.format(pose_message.theta)) #new in python 3
-    velocity_publisher.publish(velocity_message)
-
-'''
-def poseCallback2(pose_message):
-    global x
-    global y, z, yaw
-    global msg_num, velocity_publisher, direction, inc
-    x= pose_message.x
-    y= pose_message.y
-    yaw = pose_message.theta
-
-    msg_num = msg_num + 1
-    
-
-    if msg_num%1 == 0:
-        # x is between 0 and 11
-        #print(x)
-        
-        if direction == 1 and x > 10:
-            inc = -1
-            direction = -1
-        if direction == -1 and x < 0.1:
-            inc = 1
-            direction = 1
-
-        velocity_message = Twist()
-        velocity_message.linear.x += inc
-        velocity_publisher.publish(velocity_message)
-    
-
-            
-
-    if msg_num > 100000:
-        rospy.signal_shutdown('Ended')
-        velocity_message = Twist()
-        velocity_message.linear.x = 0
-        velocity_publisher.publish(velocity_message)
-    #print ('x = {}'.format(pose_message.x)) #new in python 3
-    #print ('y = %f' %pose_message.y) #used in python 2
-    #print ('yaw = {}'.format(pose_message.theta)) #new in python 3
-
-'''
+    return new_linear_velocity, new_angular_velocity
 
 if __name__ == '__main__':
     try:
